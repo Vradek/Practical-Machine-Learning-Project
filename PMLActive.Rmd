@@ -1,0 +1,84 @@
+---
+title: "Practical Machine Learning Project"
+output: html_document
+---
+
+##Introduction
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+```{r}
+library(caret)
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(randomForest)
+library(rpart)
+library(rpart.plot)
+```
+
+## Exploratory Analysis
+
+Creating a few objects containing the data as well as adding a day factor and removing the "NA"s from the data.
+```{r}
+pmltrain<- read.csv("pml-training.csv")
+pmltest<- read.csv("pml-testing.csv")
+
+pmltrain$cvtd_timestamp<- as.Date(pmltrain$cvtd_timestamp, format = "%m/%d/%Y %H:%M")
+pmltrain$Day<-factor(weekdays(pmltrain$cvtd_timestamp)) #Add day variable
+
+pmltrain <- pmltrain[, colSums(is.na(pmltrain)) == 0]
+pmltest <- pmltest[, colSums(is.na(pmltest)) == 0] 
+
+#### Remove columns that are not relevant to accelerometer measurements.
+classe<- pmltrain$classe
+trainRemove<- grepl("^X|timestamp|window", names(pmltrain))
+pmltrain<- pmltrain[, !trainRemove]
+trainCleaned<- pmltrain[, sapply(pmltrain, is.numeric)]
+trainCleaned$classe<- classe
+testRemove<- grepl("^X|timestamp|window", names(pmltest))
+pmltest<- pmltest[, !testRemove]
+testCleaned<- pmltest[, sapply(pmltest, is.numeric)]
+
+head(trainCleaned)
+dim(trainCleaned)
+```
+
+Now, the cleaned data contains 19622 observations and 53 variables for both train and test datasets
+
+## Training and Modeling the data sets 
+
+After the data has been partitioned, significant variables will be identified and a predictive model will be fit using a Random Forest algorithm as it gives important variables and removes multicollinearity  and outliers. I will also use 5-fold cross validation when applying the algorithm.
+
+```{r}
+set.seed(181117)
+inTrain <- createDataPartition(trainCleaned$classe, p=0.70, list=F)
+trainData <- trainCleaned[inTrain, ]
+testData <- trainCleaned[-inTrain, ]
+
+controlRf <- trainControl(method="cv", 5)
+rfmod<- train(classe ~., data=trainData, method="rf", trControl=controlRf, importance=TRUE, ntree=100)
+rfmod
+```
+
+##Accuracy of the model on the test data set
+
+```{r}
+predictRfmod<- predict(rfmod, testData)
+confusionMatrix(testData$classe, predictRfmod)
+
+accuracy <- postResample(predictRfmod, testData$classe)
+accuracy
+
+Error <- 1 - as.numeric(confusionMatrix(testData$classe, predictRfmod)$overall[1])
+Error
+```
+
+So, the estimated accuracy of the model is 99.32% and the estimated out-of-sample error is 0.78%.
+
+##Predicting on Test Data Set
+
+```{r}
+result <- predict(rfmod, testCleaned[, -length(names(testCleaned))])
+result
+```
