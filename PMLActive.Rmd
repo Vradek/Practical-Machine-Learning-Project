@@ -20,7 +20,7 @@ library(rpart.plot)
 ## Exploratory Analysis
 
 Creating a few objects containing the data as well as adding a day factor and removing the "NA"s from the data.
-```{r}
+```{r results="show"}
 pmltrain<- read.csv("pml-training.csv")
 pmltest<- read.csv("pml-testing.csv")
 
@@ -50,7 +50,7 @@ Now, the cleaned data contains 19622 observations and 53 variables for both trai
 
 After the data has been partitioned, significant variables will be identified and a predictive model will be fit using a Random Forest algorithm as it gives important variables and removes multicollinearity  and outliers. I will also use 5-fold cross validation when applying the algorithm.
 
-```{r}
+```{r results="show"}
 set.seed(181117)
 inTrain <- createDataPartition(trainCleaned$classe, p=0.70, list=F)
 trainData <- trainCleaned[inTrain, ]
@@ -63,7 +63,7 @@ rfmod
 
 ## Accuracy of the model on the test data set
 
-```{r}
+```{r results="show"}
 predictRfmod<- predict(rfmod, testData)
 confusionMatrix(testData$classe, predictRfmod)
 
@@ -78,7 +78,7 @@ So, the estimated accuracy of the model is 99.32% and the estimated out-of-sampl
 
 ## Predicting on Test Data Set
 
-```{r}
+```{r results="show"}
 result <- predict(rfmod, testCleaned[, -length(names(testCleaned))])
 result
 ```
